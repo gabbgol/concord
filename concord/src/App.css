@@ -1,0 +1,31 @@
+main {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+video {
+  width: 800px;
+  height: 500px;
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: 20px;
+  background: #111;
+}
+
+button {
+  margin-left: 15px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  background-color: var(--accent-border);
+}
+button:hover{
+  background-color: #1400ae;
+  color: #fff;
+}
