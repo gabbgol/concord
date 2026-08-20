@@ -458,8 +458,10 @@ function App() {
             muted
 
           />
-          <button onClick={telaCheiaRemota}>
-            Tela Cheia
+          <button 
+              className='botao-tela-cheia'
+              onClick={telaCheiaRemota}>
+              ⛶
           </button>
 </div>
 <div>
