@@ -458,6 +458,9 @@ function App() {
             muted
 
           />
+          <button onClick={telaCheiaRemota}>
+            Tela Cheia
+          </button>
 </div>
 <div>
 <p>Outro usuário</p>
