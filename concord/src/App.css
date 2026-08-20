@@ -18,6 +18,8 @@ main {
 
 .botao-tela-cheia {
   position: absolute;
+  align-items: center;
+  align-content: center;
   top: 10px;
   right: 10px;
 
@@ -28,7 +30,7 @@ main {
   border-radius: 8px;
 
   cursor: pointer;
-  font-size: 20px;
+  font-size: 20;
 }
 
 video {
