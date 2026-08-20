@@ -420,8 +420,20 @@ function App() {
 
   }
   function telaCheiaRemota() {
-    if(remoteVideoRef.current){
-      remoteVideoRef.current.requestFullscreen()
+    const video = remoteVideoRef.current
+
+    if (!video) return
+
+    if (video.requestFullscreen){
+      video.requestFullscreen()
+      return
+    }
+
+    const videoSafari = video as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void
+    }
+    if (videoSafari.webkitEnterFullscreen){
+      videoSafari.webkitEnterFullscreen()
     }
   }
   function copiarLink() {
