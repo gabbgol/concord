@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import './App.css'
 
-const socket = io('http://localhost:3001')
+const socket = io('https://concord-v470.onrender.com')
 
 function App() {
 
