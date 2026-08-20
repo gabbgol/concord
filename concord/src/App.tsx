@@ -464,18 +464,25 @@ function App() {
 </div>
 <div>
 <p>Outro usuário</p>
-<video
+<div className='video-remoto'>
+  <video
 
-            ref={remoteVideoRef}
+              ref={remoteVideoRef}
 
-            autoPlay
+              autoPlay
 
-            playsInline
+              playsInline
 
-          />
-          <button onClick={telaCheiaRemota}>
-            Tela Cheia
-          </button>
+              muted
+
+            />
+            <button 
+              className='botao-tela-cheia'
+              onClick={telaCheiaRemota}>
+              ⛶
+            </button>
+</div>
+
 </div>
 </div>
 <div className="controles">
