@@ -318,107 +318,104 @@ function App() {
 
   async function compartilharTela() {
 
-    try {
+  try {
 
-      const screenStream =
+    const peerConnection = peerConnectionRef.current
 
-        await navigator.mediaDevices.getDisplayMedia({
+    if (!peerConnection) {
 
-          video: true,
+      console.error('Não existe conexão WebRTC ativa')
 
-        })
-
-      const screenTrack =
-
-        screenStream.getVideoTracks()[0]
-
-      const peerConnection =
-
-        peerConnectionRef.current
-
-      if (!peerConnection) {
-
-        console.log(
-
-          'Ainda não existe conexão com outro usuário'
-
-        )
-
-        return
-
-      }
-
-      const sender =
-
-        peerConnection
-
-          .getSenders()
-
-          .find(
-
-            (sender) =>
-
-              sender.track?.kind === 'video'
-
-          )
-
-      if (sender) {
-
-        await sender.replaceTrack(screenTrack)
-
-      }
-
-      if (localVideoRef.current) {
-
-        localVideoRef.current.srcObject =
-
-          screenStream
-
-      }
-
-      screenTrack.onended = async () => {
-
-        const cameraTrack =
-
-          streamRef.current
-
-            ?.getVideoTracks()[0]
-
-        if (cameraTrack && sender) {
-
-          await sender.replaceTrack(cameraTrack)
-
-        }
-
-        if (
-
-          localVideoRef.current &&
-
-          streamRef.current
-
-        ) {
-
-          localVideoRef.current.srcObject =
-
-            streamRef.current
-
-        }
-
-      }
-
-    } catch (error) {
-
-      console.error(
-
-        'Erro ao compartilhar tela:',
-
-        error
-
-      )
+      return
 
     }
 
+    const screenStream =
+
+      await navigator.mediaDevices.getDisplayMedia({
+
+        video: true,
+
+        audio: false,
+
+      })
+
+    const screenTrack = screenStream.getVideoTracks()[0]
+
+    const videoSender = peerConnection
+
+      .getSenders()
+
+      .find((sender) => sender.track?.kind === 'video')
+
+    console.log('Video sender encontrado:', videoSender)
+
+    console.log('Track da tela:', screenTrack)
+
+    if (!videoSender) {
+
+      console.error('Não encontrei o sender de vídeo')
+
+      return
+
+    }
+
+    await videoSender.replaceTrack(screenTrack)
+
+    console.log('Tela começou a ser enviada')
+
+    if (localVideoRef.current) {
+
+      localVideoRef.current.srcObject = screenStream
+
+    }
+
+    screenTrack.onended = async () => {
+
+      console.log('Compartilhamento encerrado')
+
+      const cameraTrack =
+
+        streamRef.current?.getVideoTracks()[0]
+
+      if (cameraTrack) {
+
+        await videoSender.replaceTrack(cameraTrack)
+
+        console.log('Câmera voltou a ser enviada')
+
+      }
+
+      if (
+
+        localVideoRef.current &&
+
+        streamRef.current
+
+      ) {
+
+        localVideoRef.current.srcObject =
+
+          streamRef.current
+
+      }
+
+    }
+
+  } catch (error) {
+
+    console.error(
+
+      'Erro ao compartilhar tela:',
+
+      error
+
+    )
+
   }
+
+}
+ 
   function telaCheiaRemota() {
     const video = remoteVideoRef.current
 
