@@ -50,10 +50,9 @@ socket.to(roomId).emit('ice-candidate', candidate)
 
 })
 
-httpServer.listen(3001, () => {
+const PORT = process.env.PORT || 3001
 
-  console.log('Servidor rodando em http://localhost:3001')
-
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${PORT}`)
 })
-
  
