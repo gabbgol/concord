@@ -1,597 +1,67 @@
-import { io } from 'socket.io-client'
-
-import { useEffect, useRef, useState } from 'react'
-
 import './App.css'
+import { useCall } from './hooks/useCall'
+import JoinCall from './components/JoinCall'
+import CallStage from './components/CallStage'
+import ParticipantList from './components/ParticipantList'
+import CallControls from './components/CallControls'
 
-const socket = io('https://concord-v470.onrender.com')
+function getRoomIdFromUrl(): string {
+  const segment = window.location.pathname.split('/').filter(Boolean).pop()
+  return segment || 'sala-padrao'
+}
 
 function App() {
+  const roomId = getRoomIdFromUrl()
+  const {
+    status,
+    error,
+    participants,
+    room,
+    roomVersion,
+    micEnabled,
+    cameraEnabled,
+    screenSharing,
+    join,
+    leave,
+    toggleMic,
+    toggleCamera,
+    toggleScreenShare,
+    clearError,
+  } = useCall(roomId)
 
-  const localVideoRef = useRef<HTMLVideoElement>(null)
+  const inCall = status === 'connected' || status === 'reconnecting'
 
-  const remoteVideoRef = useRef<HTMLVideoElement>(null)
-
-  const streamRef = useRef<MediaStream | null>(null)
-
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
-
-  const [cameraAtiva, setCameraAtiva] = useState(false)
-
-  const [microfoneAtivo, setMicrofoneAtivo] = useState(false)
-
-  const roomId =
-
-    window.location.pathname.split('/').pop() || 'teste'
-
- function criarPeerConnection() {
-
-  const peerConnection = new RTCPeerConnection({
-
-    iceServers: [
-
-      {
-
-        urls: 'stun:stun.l.google.com:19302',
-
-      },
-
-    ],
-
-  })
-
-  peerConnection.onicecandidate = (event) => {
-
-    if (event.candidate) {
-
-      socket.emit('ice-candidate', {
-
-        roomId,
-
-        candidate: event.candidate,
-
-      })
-
-    }
-
-  }
-
-  peerConnection.ontrack = (event) => {
-
-    console.log(
-
-      'Recebi track remota:',
-
-      event.track.kind
-
+  if (!inCall || !room) {
+    return (
+      <JoinCall
+        roomId={roomId}
+        status={status}
+        error={error}
+        onJoin={join}
+        onDismissError={clearError}
+      />
     )
-
-    const remoteStream = event.streams[0]
-
-    if (remoteVideoRef.current) {
-
-      remoteVideoRef.current.srcObject =
-
-        remoteStream
-
-    }
-
-  }
-
-  const stream = streamRef.current
-
-  if (stream) {
-
-    stream.getTracks().forEach((track) => {
-
-      peerConnection.addTrack(track, stream)
-
-      console.log(
-
-        'Track adicionada à conexão:',
-
-        track.kind
-
-      )
-
-    })
-
-  } else {
-
-    console.error(
-
-      'Não existe stream de câmera ao criar a conexão'
-
-    )
-
-  }
-
-  peerConnectionRef.current = peerConnection
-
-  return peerConnection
-
-}
- 
-
-  async function criarOferta() {
-
-    const peerConnection = criarPeerConnection()
-
-    const offer =
-
-      await peerConnection.createOffer()
-
-    await peerConnection.setLocalDescription(
-
-      offer
-
-    )
-
-    socket.emit('offer', {
-
-      roomId,
-
-      offer,
-
-    })
-
-  }
-
-  useEffect(() => {
-
-    async function preparar() {
-
-      await iniciarCamera()
-
-      socket.emit('join-room', roomId)
-
-    }
-
-    socket.on('user-joined', async () => {
-
-      console.log('Outro usuário entrou')
-
-      await criarOferta()
-
-    })
-
-    socket.on('offer', async (offer) => {
-
-      console.log('Offer recebida')
-
-      const peerConnection =
-
-        criarPeerConnection()
-
-      await peerConnection.setRemoteDescription(
-
-        offer
-
-      )
-
-      const answer =
-
-        await peerConnection.createAnswer()
-
-      await peerConnection.setLocalDescription(
-
-        answer
-
-      )
-
-      socket.emit('answer', {
-
-        roomId,
-
-        answer,
-
-      })
-
-    })
-
-    socket.on('answer', async (answer) => {
-
-      console.log('Answer recebida')
-
-      if (!peerConnectionRef.current) return
-
-      await peerConnectionRef.current.setRemoteDescription(
-
-        answer
-
-      )
-
-    })
-
-    socket.on(
-
-      'ice-candidate',
-
-      async (candidate) => {
-
-        if (!peerConnectionRef.current) return
-
-        try {
-
-          await peerConnectionRef.current.addIceCandidate(
-
-            candidate
-
-          )
-
-        } catch (error) {
-
-          console.error(
-
-            'Erro ao adicionar ICE:',
-
-            error
-
-          )
-
-        }
-
-      }
-
-    )
-
-    preparar()
-
-    return () => {
-
-      socket.off('user-joined')
-
-      socket.off('offer')
-
-      socket.off('answer')
-
-      socket.off('ice-candidate')
-
-    }
-
-  }, [])
-
-  async function iniciarCamera() {
-
-    if (streamRef.current) return
-
-    try {
-
-      const stream =
-
-        await navigator.mediaDevices.getUserMedia({
-
-          video: true,
-
-          audio: true,
-
-        })
-
-      streamRef.current = stream
-
-      if (localVideoRef.current) {
-
-        localVideoRef.current.srcObject = stream
-
-      }
-
-      setCameraAtiva(true)
-
-      setMicrofoneAtivo(true)
-
-    } catch (error) {
-
-      console.error(
-
-        'Erro ao acessar câmera:',
-
-        error
-
-      )
-
-    }
-
-  }
-
-  async function alternarCamera() {
-
-    const stream = streamRef.current
-
-    if (!stream) {
-
-      await iniciarCamera()
-
-      return
-
-    }
-
-    const videoTrack =
-
-      stream.getVideoTracks()[0]
-
-    if (!videoTrack) return
-
-    videoTrack.enabled =
-
-      !videoTrack.enabled
-
-    setCameraAtiva(videoTrack.enabled)
-
-  }
-
-  function alternarMicrofone() {
-
-    const stream = streamRef.current
-
-    if (!stream) return
-
-    const audioTrack =
-
-      stream.getAudioTracks()[0]
-
-    if (!audioTrack) return
-
-    audioTrack.enabled =
-
-      !audioTrack.enabled
-
-    setMicrofoneAtivo(audioTrack.enabled)
-
-  }
-
-async function compartilharTela() {
-
-  try {
-
-    const peerConnection =
-
-      peerConnectionRef.current
-
-    if (!peerConnection) {
-
-      console.error(
-
-        'Não existe conexão WebRTC ativa'
-
-      )
-
-      return
-
-    }
-
-    const screenStream =
-
-      await navigator.mediaDevices.getDisplayMedia({
-
-        video: {
-
-          width: { ideal: 1920 },
-
-          height: { ideal: 1080 },
-
-          frameRate: { ideal: 30 },
-
-        },
-
-        audio: false,
-
-      })
-
-    const screenTrack =
-
-      screenStream.getVideoTracks()[0]
-
-    const videoSender = peerConnection
-
-      .getSenders()
-
-      .find(
-
-        (sender) =>
-
-          sender.track?.kind === 'video'
-
-      )
-
-    console.log(
-
-      'Todos os senders:',
-
-      peerConnection.getSenders()
-
-    )
-
-    console.log(
-
-      'Sender de vídeo:',
-
-      videoSender
-
-    )
-
-    if (!videoSender) {
-
-      console.error(
-
-        'Não encontrei sender de vídeo'
-
-      )
-
-      screenTrack.stop()
-
-      return
-
-    }
-
-    await videoSender.replaceTrack(screenTrack)
-
-    console.log(
-
-      'Tela substituiu a câmera com sucesso'
-
-    )
-
-    if (localVideoRef.current) {
-
-      localVideoRef.current.srcObject =
-
-        screenStream
-
-    }
-
-    screenTrack.onended = async () => {
-
-      const cameraTrack =
-
-        streamRef.current?.getVideoTracks()[0]
-
-      if (cameraTrack) {
-
-        await videoSender.replaceTrack(
-
-          cameraTrack
-
-        )
-
-      }
-
-      if (
-
-        localVideoRef.current &&
-
-        streamRef.current
-
-      ) {
-
-        localVideoRef.current.srcObject =
-
-          streamRef.current
-
-      }
-
-    }
-
-  } catch (error) {
-
-    console.error(
-
-      'Erro ao compartilhar tela:',
-
-      error
-
-    )
-
-  }
-
-}
- 
- 
-  function telaCheiaRemota() {
-    const video = remoteVideoRef.current
-
-    if (!video) return
-
-    if (video.requestFullscreen){
-      video.requestFullscreen()
-      return
-    }
-
-    const videoSafari = video as HTMLVideoElement & {
-      webkitEnterFullscreen?: () => void
-    }
-    if (videoSafari.webkitEnterFullscreen){
-      videoSafari.webkitEnterFullscreen()
-    }
-  }
-  function copiarLink() {
-
-    navigator.clipboard.writeText(
-
-      window.location.href
-
-    )
-
-    alert('Link copiado!')
-
   }
 
   return (
-<main>
-<h1>Concord</h1>
-<p>Sala: {roomId}</p>
-<button onClick={copiarLink}>
+    <main className="call-screen">
+      {status === 'reconnecting' && (
+        <div className="reconnecting-banner">Reconectando…</div>
+      )}
 
-        🔗 Copiar link da sala
-</button>
-<div className="videos">
-<div>
-<p>Você</p>
-<video
-
-            ref={localVideoRef}
-
-            autoPlay
-
-            playsInline
-
-            muted
-
-          />
-          <button 
-              className='botao-tela-cheia'
-              onClick={telaCheiaRemota}>
-              ⛶
-          </button>
-</div>
-<div>
-<p>Outro usuário</p>
-<div className='video-remoto'>
-  <video
-
-              ref={remoteVideoRef}
-
-              autoPlay
-
-              playsInline
-
-              muted
-
-            />
-            <button 
-              className='botao-tela-cheia'
-              onClick={telaCheiaRemota}>
-              ⛶
-            </button>
-</div>
-
-</div>
-</div>
-<div className="controles">
-<button onClick={alternarCamera}>
-
-          {cameraAtiva
-
-            ? '📹 Desligar câmera'
-
-            : '📹 Ligar câmera'}
-</button>
-<button onClick={alternarMicrofone}>
-
-          {microfoneAtivo
-
-            ? '🎤 Desligar microfone'
-
-            : '🎤 Ligar microfone'}
-</button>
-<button onClick={compartilharTela}>
-
-          🖥️ Compartilhar tela
-</button>
-</div>
-</main>
-
+      <CallStage room={room} participants={participants} roomVersion={roomVersion} />
+      <ParticipantList participants={participants} />
+      <CallControls
+        micEnabled={micEnabled}
+        cameraEnabled={cameraEnabled}
+        screenSharing={screenSharing}
+        onToggleMic={toggleMic}
+        onToggleCamera={toggleCamera}
+        onToggleScreenShare={toggleScreenShare}
+        onLeave={leave}
+      />
+    </main>
   )
-
 }
 
 export default App
