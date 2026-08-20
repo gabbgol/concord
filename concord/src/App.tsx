@@ -24,71 +24,94 @@ function App() {
 
     window.location.pathname.split('/').pop() || 'teste'
 
-  function criarPeerConnection() {
+ function criarPeerConnection() {
 
-    const peerConnection = new RTCPeerConnection({
+  const peerConnection = new RTCPeerConnection({
 
-      iceServers: [
+    iceServers: [
 
-        {
+      {
 
-          urls: 'stun:stun.l.google.com:19302',
+        urls: 'stun:stun.l.google.com:19302',
 
-        },
+      },
 
-      ],
+    ],
 
-    })
+  })
 
-    peerConnection.onicecandidate = (event) => {
+  peerConnection.onicecandidate = (event) => {
 
-      if (event.candidate) {
+    if (event.candidate) {
 
-        socket.emit('ice-candidate', {
+      socket.emit('ice-candidate', {
 
-          roomId,
+        roomId,
 
-          candidate: event.candidate,
-
-        })
-
-      }
-
-    }
-
-    peerConnection.ontrack = (event) => {
-
-      const remoteStream = event.streams[0]
-
-      if (remoteVideoRef.current) {
-
-        remoteVideoRef.current.srcObject = remoteStream
-
-      }
-
-    }
-
-    if (streamRef.current) {
-
-      streamRef.current.getTracks().forEach((track) => {
-
-        peerConnection.addTrack(
-
-          track,
-
-          streamRef.current!
-
-        )
+        candidate: event.candidate,
 
       })
 
     }
 
-    peerConnectionRef.current = peerConnection
+  }
 
-    return peerConnection
+  peerConnection.ontrack = (event) => {
+
+    console.log(
+
+      'Recebi track remota:',
+
+      event.track.kind
+
+    )
+
+    const remoteStream = event.streams[0]
+
+    if (remoteVideoRef.current) {
+
+      remoteVideoRef.current.srcObject =
+
+        remoteStream
+
+    }
 
   }
+
+  const stream = streamRef.current
+
+  if (stream) {
+
+    stream.getTracks().forEach((track) => {
+
+      peerConnection.addTrack(track, stream)
+
+      console.log(
+
+        'Track adicionada à conexão:',
+
+        track.kind
+
+      )
+
+    })
+
+  } else {
+
+    console.error(
+
+      'Não existe stream de câmera ao criar a conexão'
+
+    )
+
+  }
+
+  peerConnectionRef.current = peerConnection
+
+  return peerConnection
+
+}
+ 
 
   async function criarOferta() {
 
@@ -316,15 +339,21 @@ function App() {
 
   }
 
-  async function compartilharTela() {
+async function compartilharTela() {
 
   try {
 
-    const peerConnection = peerConnectionRef.current
+    const peerConnection =
+
+      peerConnectionRef.current
 
     if (!peerConnection) {
 
-      console.error('Não existe conexão WebRTC ativa')
+      console.error(
+
+        'Não existe conexão WebRTC ativa'
+
+      )
 
       return
 
@@ -334,27 +363,61 @@ function App() {
 
       await navigator.mediaDevices.getDisplayMedia({
 
-        video: true,
+        video: {
+
+          width: { ideal: 1920 },
+
+          height: { ideal: 1080 },
+
+          frameRate: { ideal: 30 },
+
+        },
 
         audio: false,
 
       })
 
-    const screenTrack = screenStream.getVideoTracks()[0]
+    const screenTrack =
+
+      screenStream.getVideoTracks()[0]
 
     const videoSender = peerConnection
 
       .getSenders()
 
-      .find((sender) => sender.track?.kind === 'video')
+      .find(
 
-    console.log('Video sender encontrado:', videoSender)
+        (sender) =>
 
-    console.log('Track da tela:', screenTrack)
+          sender.track?.kind === 'video'
+
+      )
+
+    console.log(
+
+      'Todos os senders:',
+
+      peerConnection.getSenders()
+
+    )
+
+    console.log(
+
+      'Sender de vídeo:',
+
+      videoSender
+
+    )
 
     if (!videoSender) {
 
-      console.error('Não encontrei o sender de vídeo')
+      console.error(
+
+        'Não encontrei sender de vídeo'
+
+      )
+
+      screenTrack.stop()
 
       return
 
@@ -362,17 +425,21 @@ function App() {
 
     await videoSender.replaceTrack(screenTrack)
 
-    console.log('Tela começou a ser enviada')
+    console.log(
+
+      'Tela substituiu a câmera com sucesso'
+
+    )
 
     if (localVideoRef.current) {
 
-      localVideoRef.current.srcObject = screenStream
+      localVideoRef.current.srcObject =
+
+        screenStream
 
     }
 
     screenTrack.onended = async () => {
-
-      console.log('Compartilhamento encerrado')
 
       const cameraTrack =
 
@@ -380,9 +447,11 @@ function App() {
 
       if (cameraTrack) {
 
-        await videoSender.replaceTrack(cameraTrack)
+        await videoSender.replaceTrack(
 
-        console.log('Câmera voltou a ser enviada')
+          cameraTrack
+
+        )
 
       }
 
@@ -415,6 +484,7 @@ function App() {
   }
 
 }
+ 
  
   function telaCheiaRemota() {
     const video = remoteVideoRef.current
