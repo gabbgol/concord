@@ -419,7 +419,11 @@ function App() {
     }
 
   }
-
+  function telaCheiaRemota() {
+    if(remoteVideoRef.current){
+      remoteVideoRef.current.requestFullscreen()
+    }
+  }
   function copiarLink() {
 
     navigator.clipboard.writeText(
@@ -466,6 +470,9 @@ function App() {
             playsInline
 
           />
+          <button onClick={telaCheiaRemota}>
+            Tela Cheia
+          </button>
 </div>
 </div>
 <div className="controles">
